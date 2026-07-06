@@ -104,15 +104,31 @@ const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(({ initialCo
     setDragOverId(null);
   };
 
-  // Image style update
-  const applyImgStyle = () => {
+  // Image style update — accepts direct values so Closure is never stale
+  const applyImgStyle = (overrides?: { w?: string; r?: string; sh?: boolean; fl?: string }) => {
     if (!imgEditor) return;
     const block = blocks.find(b => b.id === imgEditor);
     if (!block) return;
+    const w = overrides?.w ?? imgWidth;
+    const r = overrides?.r ?? imgBorderRadius;
+    const sh = overrides?.sh ?? imgShadow;
+    const fl = overrides?.fl ?? imgFloat;
+
     let html = block.html;
-    html = html.replace(/style="[^"]*"/, `style="max-width:100%;height:auto;border-radius:${imgBorderRadius};width:${imgWidth};display:block;float:${imgFloat};margin:${imgFloat === 'none' ? '1rem auto' : imgFloat === 'left' ? '0 1rem 0.5rem 0' : '0 0 0.5rem 1rem'};box-shadow:${imgShadow ? '0 4px 20px rgba(0,0,0,0.3)' : 'none'}"`);
-    if (!html.includes('style=')) {
-      html = html.replace('<img ', `<img style="max-width:100%;height:auto;border-radius:${imgBorderRadius};width:${imgWidth};display:block;float:${imgFloat};margin:${imgFloat === 'none' ? '1rem auto' : imgFloat === 'left' ? '0 1rem 0.5rem 0' : '0 0 0.5rem 1rem'};box-shadow:${imgShadow ? '0 4px 20px rgba(0,0,0,0.3)' : 'none'}" `);
+
+    // Build style string
+    const margin = fl === 'none' ? '1rem auto' : fl === 'left' ? '0 1rem 0.5rem 0' : '0 0 0.5rem 1rem';
+    const newStyle = `max-width:100%;height:auto;border-radius:${r};width:${w};display:block;float:${fl};margin:${margin};box-shadow:${sh ? '0 4px 20px rgba(0,0,0,0.3)' : 'none'}`;
+
+    // If <img> has a style attr, replace it; otherwise add it
+    if (/<img[^>]+style="/.test(html)) {
+      html = html.replace(/style="[^"]*"/, `style="${newStyle}"`);
+    } else {
+      html = html.replace('<img ', `<img style="${newStyle}" `);
+    }
+    // Ensure draggable=false to prevent native browser drag
+    if (!html.includes('draggable="false"')) {
+      html = html.replace('<img ', '<img draggable="false" ');
     }
     updateBlock(imgEditor, { html });
   };
@@ -140,6 +156,36 @@ const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(({ initialCo
       setImgEditor(null);
     }
   }, [selectedBlock]);
+
+  // Expose insertImageBlock to parent via ref
+  useImperativeHandle(ref, () => ({
+    insertImageBlock(url: string, alt: string) {
+      const newHtml = `<img src="${url}" alt="${alt}" draggable="false" style="max-width:100%;height:auto;border-radius:8px;display:block;margin:1rem auto;width:100%;box-shadow:none" />`;
+      // If selected block is an image placeholder (has no <img> tag), replace it
+      if (selectedId) {
+        const selBlock = blocks.find(b => b.id === selectedId);
+        if (selBlock?.type === 'image' && !selBlock.html.includes('<img')) {
+          const newBlocks = blocks.map(b => b.id === selectedId ? { ...b, html: newHtml } : b);
+          emitChange(newBlocks);
+          setShowAddMenu(null);
+          return;
+        }
+      }
+      // Otherwise insert a new image block after selection
+      const newBlock: ContentBlock = {
+        id: crypto.randomUUID(),
+        type: 'image',
+        html: newHtml,
+        style: {},
+      };
+      const idx = selectedId ? blocks.findIndex(b => b.id === selectedId) : blocks.length - 1;
+      const insertAt = idx >= 0 ? idx : blocks.length - 1;
+      const newBlocks = [...blocks.slice(0, insertAt + 1), newBlock, ...blocks.slice(insertAt + 1)];
+      emitChange(newBlocks);
+      setSelectedId(newBlock.id);
+      setShowAddMenu(null);
+    }
+  }), [blocks, selectedId, emitChange]);
 
   return (
     <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
@@ -243,30 +289,33 @@ const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(({ initialCo
               <PropRow label="Lebar">
                 <div style={{ display: 'flex', gap: '0.25rem' }}>
                   {['50%', '75%', '100%'].map(w => (
-                    <button key={w} onClick={() => { setImgWidth(w); setTimeout(applyImgStyle, 10); }}
+                    <button key={w} onClick={() => { setImgWidth(w); applyImgStyle({ w }); }}
                       style={{ flex: 1, padding: '0.25rem 0', background: imgWidth === w ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.04)', border: imgWidth === w ? '1px solid rgba(212,175,55,0.3)' : '1px solid rgba(255,255,255,0.06)', borderRadius: '4px', color: imgWidth === w ? '#d4af37' : '#fff', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 600 }}>{w}</button>
                   ))}
                 </div>
               </PropRow>
               <PropRow label="Posisi">
                 <div style={{ display: 'flex', gap: '0.25rem' }}>
-                  {['kiri', 'tengah', 'kanan'].map(p => (
-                    <button key={p} onClick={() => { setImgFloat(p === 'kiri' ? 'left' : p === 'kanan' ? 'right' : 'none'); setTimeout(applyImgStyle, 10); }}
-                      style={{ flex: 1, padding: '0.25rem 0', background: (imgFloat === 'left' && p === 'kiri') || (imgFloat === 'right' && p === 'kanan') || (imgFloat === 'none' && p === 'tengah') ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.04)', border: (imgFloat === 'left' && p === 'kiri') || (imgFloat === 'right' && p === 'kanan') || (imgFloat === 'none' && p === 'tengah') ? '1px solid rgba(212,175,55,0.3)' : '1px solid rgba(255,255,255,0.06)', borderRadius: '4px', color: (imgFloat === 'left' && p === 'kiri') || (imgFloat === 'right' && p === 'kanan') || (imgFloat === 'none' && p === 'tengah') ? '#d4af37' : '#fff', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 600 }}>{p}</button>
-                  ))}
+                  {['kiri', 'tengah', 'kanan'].map(p => {
+                    const fl = p === 'kiri' ? 'left' : p === 'kanan' ? 'right' : 'none';
+                    return (
+                      <button key={p} onClick={() => { setImgFloat(fl); applyImgStyle({ fl }); }}
+                        style={{ flex: 1, padding: '0.25rem 0', background: imgFloat === fl ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.04)', border: imgFloat === fl ? '1px solid rgba(212,175,55,0.3)' : '1px solid rgba(255,255,255,0.06)', borderRadius: '4px', color: imgFloat === fl ? '#d4af37' : '#fff', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 600 }}>{p}</button>
+                    );
+                  })}
                 </div>
               </PropRow>
               <PropRow label="Sudut">
                 <div style={{ display: 'flex', gap: '0.25rem' }}>
                   {['0', '4px', '8px', '12px', '50%'].map(r => (
-                    <button key={r} onClick={() => { setImgBorderRadius(r); setTimeout(applyImgStyle, 10); }}
+                    <button key={r} onClick={() => { setImgBorderRadius(r); applyImgStyle({ r }); }}
                       style={{ flex: 1, padding: '0.25rem 0', background: imgBorderRadius === r ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.04)', border: imgBorderRadius === r ? '1px solid rgba(212,175,55,0.3)' : '1px solid rgba(255,255,255,0.06)', borderRadius: '4px', color: imgBorderRadius === r ? '#d4af37' : '#fff', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 600 }}>{r}</button>
                   ))}
                 </div>
               </PropRow>
               <PropRow label="Bayangan">
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.78rem', color: '#c8d0dc' }}>
-                  <input type="checkbox" checked={imgShadow} onChange={() => { setImgShadow(!imgShadow); setTimeout(() => { setImgShadow(!imgShadow); applyImgStyle(); }, 20); }} style={{ accentColor: '#d4af37' }} />
+                  <input type="checkbox" checked={imgShadow} onChange={() => { const next = !imgShadow; setImgShadow(next); applyImgStyle({ sh: next }); }} style={{ accentColor: '#d4af37' }} />
                   Aktifkan bayangan
                 </label>
               </PropRow>
@@ -361,7 +410,7 @@ function BlockContent({ block, onUpdate }: { block: ContentBlock; onUpdate: (htm
 
   if (block.type === 'image') {
     return (
-      <div style={{ lineHeight: 0 }}>
+      <div style={{ lineHeight: 0, position: 'relative' }}>
         <div dangerouslySetInnerHTML={{ __html: block.html }} />
       </div>
     );
@@ -430,19 +479,18 @@ function parseHtmlToBlocks(html: string): ContentBlock[] {
     const outerHtml = node.outerHTML;
 
     let type: ContentBlock['type'] = 'custom';
-    if (tag === 'p' || tag === 'span' || tag === 'div') type = 'text';
+
+    // Check for image first — could be <img>, <figure>, <picture>, or a <div>/<p> containing <img>
+    const hasImg = node.querySelector ? !!node.querySelector('img') : false;
+    if (tag === 'img') type = 'image';
+    else if (tag === 'figure' || tag === 'picture') type = 'image';
+    else if (hasImg) type = 'image';
+    else if (tag === 'p' || tag === 'span' || tag === 'div') type = 'text';
     else if (tag.match(/^h[1-6]$/)) type = 'heading';
-    else if (tag === 'img' || (tag === 'figure' || tag === 'picture')) type = 'image';
     else if (tag === 'ul') type = 'list';
     else if (tag === 'ol') type = 'numbered-list';
     else if (tag === 'blockquote') type = 'quote';
     else if (tag === 'hr') type = 'divider';
-
-    // Check if node contains an image
-    if (tag === 'div' || tag === 'p' || tag === 'figure') {
-      const img = node.querySelector('img');
-      if (img) type = 'image';
-    }
 
     blocks.push({
       id: `block-${i++}`,
