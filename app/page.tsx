@@ -394,13 +394,13 @@ export default function Home() {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 28px;
-          height: 28px;
-          border-radius: 6px;
+          width: 26px;
+          height: 26px;
+          border-radius: 5px;
           background: rgba(255, 255, 255, 0.04);
           flex-shrink: 0;
-          transition: background 0.18s ease;
-          font-size: 0.8rem;
+          transition: background 0.18s ease, color 0.18s ease;
+          color: rgba(255, 255, 255, 0.25);
         }
 
         .hb-nav-btn:hover {
@@ -827,10 +827,10 @@ export default function Home() {
             <div className="hb-nav-group">
               <span className="hb-nav-group-label">Informasi Dasar</span>
               <div className="hb-nav-group-items">
-                {[{id:'pendahuluan', label:'Pendahuluan', icon:'📖'},{id:'divisi', label:'Divisi', icon:'🏛️'},{id:'kepangkatan', label:'Kepangkatan', icon:'⭐'},{id:'kendaraan', label:'Kendaraan', icon:'🚔'},{id:'penampilan', label:'Penampilan', icon:'👔'}].map(item => (
+                {[{id:'pendahuluan', label:'Pendahuluan'},{id:'divisi', label:'Divisi'},{id:'kepangkatan', label:'Kepangkatan'},{id:'kendaraan', label:'Kendaraan'},{id:'penampilan', label:'Penampilan'}].map(item => (
                   <button key={item.id} className={`hb-nav-btn ${activeSectionId === item.id ? 'active' : ''}`}
                     onClick={() => { setActiveSectionId(item.id); setIsSidebarOpen(false); setHighlightQuery(''); setEditingSectionId(null); }}>
-                    <span className="nav-icon">{item.icon}</span>
+                    <span className="nav-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="3" fill="currentColor" opacity="0.6"/></svg></span>
                     {item.label}
                   </button>
                 ))}
@@ -840,10 +840,10 @@ export default function Home() {
             <div className="hb-nav-group">
               <span className="hb-nav-group-label">Operasional</span>
               <div className="hb-nav-group-items">
-                {[{id:'radio', label:'Radio', icon:'📡'},{id:'senjata', label:'Persenjataan', icon:'🔫'},{id:'penanganan', label:'Penanganan', icon:'🚨'},{id:'penyanderaan', label:'Penyanderaan', icon:'⛓️'},{id:'pengumuman', label:'Pengumuman', icon:'📢'},{id:'taktik', label:'Taktik', icon:'🧠'}].map(item => (
+                {[{id:'radio', label:'Radio'},{id:'senjata', label:'Persenjataan'},{id:'penanganan', label:'Penanganan'},{id:'penyanderaan', label:'Penyanderaan'},{id:'pengumuman', label:'Pengumuman'},{id:'taktik', label:'Taktik'}].map(item => (
                   <button key={item.id} className={`hb-nav-btn ${activeSectionId === item.id ? 'active' : ''}`}
                     onClick={() => { setActiveSectionId(item.id); setIsSidebarOpen(false); setHighlightQuery(''); setEditingSectionId(null); }}>
-                    <span className="nav-icon">{item.icon}</span>
+                    <span className="nav-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="3" fill="currentColor" opacity="0.6"/></svg></span>
                     {item.label}
                   </button>
                 ))}
@@ -853,10 +853,10 @@ export default function Home() {
             <div className="hb-nav-group">
               <span className="hb-nav-group-label">Hukum & Referensi</span>
               <div className="hb-nav-group-items">
-                {[{id:'undang-undang', label:'Undang-Undang', icon:'⚖️'},{id:'hukum', label:'Cara Memenjarakan', icon:'🔒'},{id:'barang-ilegal', label:'Barang Ilegal', icon:'📦'},{id:'fitur-f1', label:'Fitur F1', icon:'📋'}].map(item => (
+                {[{id:'undang-undang', label:'Undang-Undang'},{id:'hukum', label:'Cara Memenjarakan'},{id:'barang-ilegal', label:'Barang Ilegal'},{id:'fitur-f1', label:'Fitur F1'}].map(item => (
                   <button key={item.id} className={`hb-nav-btn ${activeSectionId === item.id ? 'active' : ''}`}
                     onClick={() => { setActiveSectionId(item.id); setIsSidebarOpen(false); setHighlightQuery(''); setEditingSectionId(null); }}>
-                    <span className="nav-icon">{item.icon}</span>
+                    <span className="nav-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="3" fill="currentColor" opacity="0.6"/></svg></span>
                     {item.label}
                   </button>
                 ))}
