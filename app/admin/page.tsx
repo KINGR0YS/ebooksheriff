@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Shield, LogIn, LogOut, FileText, Image, Save, ArrowLeft, Trash2, Eye, Upload, ExternalLink, Bold, Italic, Underline, Heading1, Heading2, Heading3, List, ListOrdered, Quote, Code, Link, AlignLeft, AlignCenter, AlignRight, Minus, FileCode2 } from 'lucide-react';
+import { Shield, LogIn, LogOut, FileText, Image, Save, ArrowLeft, Eye, Upload, ExternalLink } from 'lucide-react';
+import BlockEditor from './BlockEditor';
 
 type Section = {
   slug: string;
@@ -42,11 +43,7 @@ export default function AdminPage() {
   const [loadingImages, setLoadingImages] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // Image toolbar
-  const [imgToolbar, setImgToolbar] = useState<{ top: number; left: number; width: string; align: string } | null>(null);
-  const selectedImgRef = useRef<HTMLImageElement | null>(null);
-
-  const editorRef = useRef<HTMLDivElement>(null);
+  const blockEditorRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load sections
@@ -211,122 +208,13 @@ export default function AdminPage() {
     }
   };
 
-  // Image toolbar actions
-  const handleImgAlign = (align: string) => {
-    const img = selectedImgRef.current;
-    if (!img) return;
-    const margin = align === 'left' ? '0 1rem 0.5rem 0' : align === 'right' ? '0 0 0.5rem 1rem' : '1rem auto';
-    img.style.cssText += `;display:${align === 'center' ? 'block' : 'inline-block'};float:${align !== 'center' ? align : 'none'};margin:${margin}`;
-    setEditContent(editorRef.current?.innerHTML || '');
-    setImgToolbar(null);
-  };
-  const handleImgWidth = (w: string) => {
-    const img = selectedImgRef.current;
-    if (!img) return;
-    img.style.width = w;
-    setEditContent(editorRef.current?.innerHTML || '');
-  };
-
-  // Detect click on image in editor
-  const handleEditorClick = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.tagName === 'IMG') {
-      e.preventDefault();
-      selectedImgRef.current = target as HTMLImageElement;
-      const rect = (target as HTMLImageElement).getBoundingClientRect();
-      const editorRect = editorRef.current?.getBoundingClientRect();
-      if (editorRect) {
-        setImgToolbar({
-          top: rect.top - editorRect.top - 45,
-          left: rect.left - editorRect.left,
-          width: (target as HTMLImageElement).style.width || '',
-          align: (target as HTMLImageElement).style.float || 'center',
-        });
-      }
-    } else {
-      setImgToolbar(null);
-      selectedImgRef.current = null;
-    }
-  };
-
-  // Insert image into editor
+  // Insert image into block editor
   const handleInsertImage = (url: string, alt: string) => {
-    const editor = editorRef.current;
-    if (!editor) return;
-    const imgHtml = `<img src="${url}" alt="${alt}" style="max-width:100%;height:auto;border-radius:8px;margin:1rem 0;display:block">`;
-    const selection = window.getSelection();
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      if (editor.contains(range.commonAncestorContainer)) {
-        range.deleteContents();
-        const frag = range.createContextualFragment(imgHtml);
-        range.insertNode(frag);
-        range.collapse(false);
-        selection.removeAllRanges();
-        selection.addRange(range);
-      } else {
-        editor.innerHTML += imgHtml;
-      }
-    } else {
-      editor.innerHTML += imgHtml;
+    if (blockEditorRef.current?.insertImageBlock) {
+      blockEditorRef.current.insertImageBlock(url, alt);
     }
-    setEditContent(editor.innerHTML);
     setShowImageManager(false);
-    alert('✅ Gambar disisipkan ke editor! Jangan lupa simpan perubahan.');
   };
-
-  // Rich text formatting
-  const execFormat = (cmd: string, val?: string) => {
-    document.execCommand(cmd, false, val);
-    editorRef.current?.focus();
-    setEditContent(editorRef.current?.innerHTML || '');
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      execFormat('insertHTML', '&nbsp;&nbsp;&nbsp;&nbsp;');
-    }
-  };
-
-  const insertHr = () => execFormat('insertHTML', '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:1.5rem 0">');
-  const insertCodeBlock = () => execFormat('insertHTML', '<pre style="background:rgba(0,0,0,0.3);padding:1rem;border-radius:8px;overflow-x:auto;font-family:monospace;font-size:0.82rem;line-height:1.6;color:#e2e8f0"><code>Kode di sini...</code></pre>');
-  const addLink = () => {
-    const url = prompt('Masukkan URL:');
-    if (url) execFormat('createLink', url);
-  };
-
-  // Format buttons config
-  type FmtBtn = { icon: any; cmd: string; val?: string; title: string; label?: string; custom?: () => void };
-  const fmtGroups: FmtBtn[][] = [
-    [
-      { icon: Bold, cmd: 'bold', title: 'Bold' },
-      { icon: Italic, cmd: 'italic', title: 'Italic' },
-      { icon: Underline, cmd: 'underline', title: 'Underline' },
-    ],
-    [
-      { icon: Heading1, cmd: 'formatBlock', val: 'h3', title: 'Heading 1', label: 'H1' },
-      { icon: Heading2, cmd: 'formatBlock', val: 'h4', title: 'Heading 2', label: 'H2' },
-      { icon: Heading3, cmd: 'formatBlock', val: 'h5', title: 'Heading 3', label: 'H3' },
-    ],
-    [
-      { icon: List, cmd: 'insertUnorderedList', title: 'Bullet List' },
-      { icon: ListOrdered, cmd: 'insertOrderedList', title: 'Numbered List' },
-    ],
-    [
-      { icon: Quote, cmd: 'formatBlock', val: 'blockquote', title: 'Quote', label: '"' },
-      { icon: Code, cmd: 'insertHTML', custom: insertCodeBlock, title: 'Code Block' },
-    ],
-    [
-      { icon: AlignLeft, cmd: 'justifyLeft', title: 'Align Left' },
-      { icon: AlignCenter, cmd: 'justifyCenter', title: 'Align Center' },
-      { icon: AlignRight, cmd: 'justifyRight', title: 'Align Right' },
-    ],
-    [
-      { icon: Link, cmd: 'createLink', custom: addLink, title: 'Link' },
-      { icon: Minus, cmd: 'insertHTML', custom: insertHr, title: 'Horizontal line' },
-    ],
-  ];
 
   // Category color mapping
   const categoryColors: Record<string, string> = {
@@ -425,55 +313,13 @@ export default function AdminPage() {
           />
         </div>
 
-        {/* Editor */}
-        <div style={{ maxWidth: '960px', margin: '0 auto', position: 'relative' }}>
-          {/* Image Toolbar (above image) */}
-          {imgToolbar && (
-            <div style={{ position: 'absolute', top: imgToolbar.top, left: imgToolbar.left, zIndex: 50, background: '#1a1d29', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', padding: '0.3rem 0.45rem', display: 'flex', gap: '0.25rem', alignItems: 'center', boxShadow: '0 4px 16px rgba(0,0,0,0.5)', pointerEvents: 'auto' }}>
-              <button onClick={() => handleImgWidth('100%')} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '4px', color: '#fff', padding: '0.2rem 0.45rem', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 600 }}>100%</button>
-              <button onClick={() => handleImgWidth('75%')} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '4px', color: '#fff', padding: '0.2rem 0.45rem', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 600 }}>75%</button>
-              <button onClick={() => handleImgWidth('50%')} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '4px', color: '#fff', padding: '0.2rem 0.45rem', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 600 }}>50%</button>
-              <span style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.1)', margin: '0 0.15rem' }} />
-              <button onClick={() => handleImgAlign('left')} style={{ background: imgToolbar.align === 'left' ? 'rgba(212,175,55,0.2)' : 'rgba(255,255,255,0.06)', border: imgToolbar.align === 'left' ? '1px solid rgba(212,175,55,0.3)' : 'none', borderRadius: '4px', color: imgToolbar.align === 'left' ? '#d4af37' : '#fff', padding: '0.2rem 0.45rem', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 600 }}>Kiri</button>
-              <button onClick={() => handleImgAlign('center')} style={{ background: imgToolbar.align === 'center' ? 'rgba(212,175,55,0.2)' : 'rgba(255,255,255,0.06)', border: imgToolbar.align === 'center' ? '1px solid rgba(212,175,55,0.3)' : 'none', borderRadius: '4px', color: imgToolbar.align === 'center' ? '#d4af37' : '#fff', padding: '0.2rem 0.45rem', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 600 }}>Tengah</button>
-              <button onClick={() => handleImgAlign('right')} style={{ background: imgToolbar.align === 'right' ? 'rgba(212,175,55,0.2)' : 'rgba(255,255,255,0.06)', border: imgToolbar.align === 'right' ? '1px solid rgba(212,175,55,0.3)' : 'none', borderRadius: '4px', color: imgToolbar.align === 'right' ? '#d4af37' : '#fff', padding: '0.2rem 0.45rem', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 600 }}>Kanan</button>
-            </div>
-          )}
-
-          {/* Formatting Toolbar */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem', padding: '0.4rem 0.6rem', marginBottom: '0.5rem', background: 'rgba(13,16,23,0.8)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', alignItems: 'center', userSelect: 'none' }}>
-            {fmtGroups.map((group, gi) => (
-              <span key={gi} style={{ display: 'flex', gap: '0.15rem', alignItems: 'center' }}>
-                {group.map((btn, bi) => {
-                  const Icon = btn.icon;
-                  return (
-                    <button key={bi} title={btn.title}
-                      onMouseDown={(e) => { e.preventDefault(); if (btn.custom) btn.custom(); else execFormat(btn.cmd, btn.val); }}
-                      style={{ background: 'rgba(255,255,255,0.04)', border: 'none', borderRadius: '6px', color: 'rgba(255,255,255,0.7)', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, transition: 'all 0.15s' }}>
-                      {btn.label ? <span>{btn.label}</span> : <Icon size={15} />}
-                    </button>
-                  );
-                })}
-                {gi < fmtGroups.length - 1 && <span style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.06)', margin: '0 0.15rem' }} />}
-              </span>
-            ))}
-            <span style={{ flex: 1 }} />
-            <button onClick={() => setShowImageManager(true)} title="Sisipkan Gambar"
-              onMouseDown={(e) => e.preventDefault()}
-              style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: '6px', color: '#8b5cf6', padding: '0.2rem 0.6rem', display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 600 }}>
-              <Image size={13} /> Gambar
-            </button>
-          </div>
-
-          <div
-            ref={editorRef}
-            contentEditable
-            suppressContentEditableWarning
-            onClick={handleEditorClick}
-            onKeyDown={handleKeyDown}
-            onBlur={(e) => setEditContent(e.currentTarget.innerHTML)}
-            style={{ minHeight: '60vh', padding: '1.25rem', background: 'rgba(13,16,23,0.6)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#c8d0dc', fontSize: '0.88rem', lineHeight: '1.7', outline: 'none', fontFamily: 'Inter, sans-serif', overflow: 'auto' }}
-            dangerouslySetInnerHTML={{ __html: editContent }}
+        {/* Block Editor (Canva-like) */}
+        <div style={{ maxWidth: '960px', margin: '0 auto' }}>
+          <BlockEditor
+            ref={blockEditorRef}
+            initialContent={editContent}
+            onChange={setEditContent}
+            onOpenImageManager={() => { setShowImageManager(true); loadImages(); }}
           />
         </div>
 
