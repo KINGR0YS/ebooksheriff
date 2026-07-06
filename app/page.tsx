@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import handbookData from '@/lib/handbook.json';
-import { BookOpen, Search, Menu, X, Lock, Unlock, Edit3, Save, RotateCcw } from 'lucide-react';
+import { BookOpen, Search, Menu, X, Lock, Unlock, Edit3, Save, RotateCcw, FileText, Shield, Star, Car, Shirt, Radio, Crosshair, AlertTriangle, UserX, Megaphone, Map, Scale, Package, Smartphone } from 'lucide-react';
 
 interface HandbookSection {
   id: string;
@@ -391,16 +391,19 @@ export default function Home() {
         }
 
         .hb-nav-btn .nav-icon {
-          display: flex;
+          display: inline-flex;
           align-items: center;
           justify-content: center;
-          width: 26px;
-          height: 26px;
-          border-radius: 5px;
-          background: rgba(255, 255, 255, 0.04);
+          width: 18px;
+          height: 18px;
           flex-shrink: 0;
-          transition: background 0.18s ease, color 0.18s ease;
-          color: rgba(255, 255, 255, 0.25);
+          color: rgba(255, 255, 255, 0.2);
+          transition: color 0.18s ease;
+        }
+        .hb-nav-btn .nav-icon svg {
+          width: 18px;
+          height: 18px;
+          stroke-width: 1.8;
         }
 
         .hb-nav-btn:hover {
@@ -827,10 +830,10 @@ export default function Home() {
             <div className="hb-nav-group">
               <span className="hb-nav-group-label">Informasi Dasar</span>
               <div className="hb-nav-group-items">
-                {[{id:'pendahuluan', label:'Pendahuluan'},{id:'divisi', label:'Divisi'},{id:'kepangkatan', label:'Kepangkatan'},{id:'kendaraan', label:'Kendaraan'},{id:'penampilan', label:'Penampilan'}].map(item => (
+                {[{id:'pendahuluan', label:'Pendahuluan', icon:FileText},{id:'divisi', label:'Divisi', icon:Shield},{id:'kepangkatan', label:'Kepangkatan', icon:Star},{id:'kendaraan', label:'Kendaraan', icon:Car},{id:'penampilan', label:'Penampilan', icon:Shirt}].map(item => (
                   <button key={item.id} className={`hb-nav-btn ${activeSectionId === item.id ? 'active' : ''}`}
                     onClick={() => { setActiveSectionId(item.id); setIsSidebarOpen(false); setHighlightQuery(''); setEditingSectionId(null); }}>
-                    <span className="nav-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="3" fill="currentColor" opacity="0.6"/></svg></span>
+                    <span className="nav-icon"><item.icon /></span>
                     {item.label}
                   </button>
                 ))}
@@ -840,10 +843,10 @@ export default function Home() {
             <div className="hb-nav-group">
               <span className="hb-nav-group-label">Operasional</span>
               <div className="hb-nav-group-items">
-                {[{id:'radio', label:'Radio'},{id:'senjata', label:'Persenjataan'},{id:'penanganan', label:'Penanganan'},{id:'penyanderaan', label:'Penyanderaan'},{id:'pengumuman', label:'Pengumuman'},{id:'taktik', label:'Taktik'}].map(item => (
+                {[{id:'radio', label:'Radio', icon:Radio},{id:'senjata', label:'Persenjataan', icon:Crosshair},{id:'penanganan', label:'Penanganan', icon:AlertTriangle},{id:'penyanderaan', label:'Penyanderaan', icon:UserX},{id:'pengumuman', label:'Pengumuman', icon:Megaphone},{id:'taktik', label:'Taktik', icon:Map}].map(item => (
                   <button key={item.id} className={`hb-nav-btn ${activeSectionId === item.id ? 'active' : ''}`}
                     onClick={() => { setActiveSectionId(item.id); setIsSidebarOpen(false); setHighlightQuery(''); setEditingSectionId(null); }}>
-                    <span className="nav-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="3" fill="currentColor" opacity="0.6"/></svg></span>
+                    <span className="nav-icon"><item.icon /></span>
                     {item.label}
                   </button>
                 ))}
@@ -853,10 +856,10 @@ export default function Home() {
             <div className="hb-nav-group">
               <span className="hb-nav-group-label">Hukum & Referensi</span>
               <div className="hb-nav-group-items">
-                {[{id:'undang-undang', label:'Undang-Undang'},{id:'hukum', label:'Cara Memenjarakan'},{id:'barang-ilegal', label:'Barang Ilegal'},{id:'fitur-f1', label:'Fitur F1'}].map(item => (
+                {[{id:'undang-undang', label:'Undang-Undang', icon:Scale},{id:'hukum', label:'Cara Memenjarakan', icon:Lock},{id:'barang-ilegal', label:'Barang Ilegal', icon:Package},{id:'fitur-f1', label:'Fitur F1', icon:Smartphone}].map(item => (
                   <button key={item.id} className={`hb-nav-btn ${activeSectionId === item.id ? 'active' : ''}`}
                     onClick={() => { setActiveSectionId(item.id); setIsSidebarOpen(false); setHighlightQuery(''); setEditingSectionId(null); }}>
-                    <span className="nav-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="3" fill="currentColor" opacity="0.6"/></svg></span>
+                    <span className="nav-icon"><item.icon /></span>
                     {item.label}
                   </button>
                 ))}
