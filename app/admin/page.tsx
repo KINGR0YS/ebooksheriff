@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Shield, LogIn, LogOut, FileText, Image, Save, ArrowLeft, Trash2, Eye, Upload, ExternalLink, Check } from 'lucide-react';
+import { Shield, LogIn, LogOut, FileText, Image, Save, ArrowLeft, Trash2, Eye, Upload, ExternalLink } from 'lucide-react';
 
 type Section = {
   slug: string;
@@ -41,7 +41,6 @@ export default function AdminPage() {
   const [showImageManager, setShowImageManager] = useState(false);
   const [loadingImages, setLoadingImages] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -208,11 +207,30 @@ export default function AdminPage() {
     }
   };
 
-  // Copy image URL
-  const handleCopyUrl = (url: string) => {
-    navigator.clipboard.writeText(url);
-    setCopiedId(url);
-    setTimeout(() => setCopiedId(null), 1500);
+  // Insert image into editor
+  const handleInsertImage = (url: string, alt: string) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const imgHtml = `<img src="${url}" alt="${alt}" style="max-width:100%;height:auto;border-radius:8px;margin:1rem 0;display:block">`;
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      if (editor.contains(range.commonAncestorContainer)) {
+        range.deleteContents();
+        const frag = range.createContextualFragment(imgHtml);
+        range.insertNode(frag);
+        range.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      } else {
+        editor.innerHTML += imgHtml;
+      }
+    } else {
+      editor.innerHTML += imgHtml;
+    }
+    setEditContent(editor.innerHTML);
+    setShowImageManager(false);
+    alert('✅ Gambar disisipkan ke editor! Jangan lupa simpan perubahan.');
   };
 
   // Category color mapping
@@ -341,7 +359,7 @@ export default function AdminPage() {
                     style={{ background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: '8px', color: '#d4af37', padding: '0.5rem 1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', fontWeight: 600 }}>
                     <Upload size={14} /> {uploading ? 'Mengupload...' : 'Upload Gambar'}
                   </button>
-                  <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.25)' }}>Klik untuk copy URL gambar</span>
+                  <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.25)' }}>Klik gambar untuk sisipkan ke editor</span>
                 </div>
               </div>
 
@@ -351,13 +369,13 @@ export default function AdminPage() {
                 ) : images.length === 0 ? (
                   <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem', gridColumn: '1/-1', textAlign: 'center', padding: '2rem' }}>Belum ada gambar</p>
                 ) : images.map((img) => (
-                  <div key={img.public_id} onClick={() => handleCopyUrl(img.url)} style={{ cursor: 'pointer', borderRadius: '8px', overflow: 'hidden', border: copiedId === img.url ? '2px solid #22c55e' : '1px solid rgba(255,255,255,0.06)', transition: 'border 0.2s', position: 'relative', aspectRatio: '16/9', background: 'rgba(0,0,0,0.3)' }}>
+                  <div key={img.public_id} onClick={() => handleInsertImage(img.url, img.filename)} style={{ cursor: 'pointer', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)', transition: 'border 0.2s, transform 0.15s', position: 'relative', aspectRatio: '16/9', background: 'rgba(0,0,0,0.3)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(212,175,55,0.4)'; e.currentTarget.style.transform = 'scale(1.03)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.transform = 'scale(1)'; }}>
                     <img src={img.url} alt={img.filename} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    {copiedId === img.url && (
-                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Check size={24} color="#22c55e" />
-                      </div>
-                    )}
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.6)', padding: '0.25rem 0.5rem', fontSize: '0.6rem', color: 'rgba(255,255,255,0.7)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      Klik untuk sisipkan
+                    </div>
                   </div>
                 ))}
               </div>
