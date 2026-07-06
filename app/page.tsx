@@ -17,12 +17,17 @@ export default function Home() {
   const [highlightQuery, setHighlightQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Database-backed data
+  const [sections, setSections] = useState<HandbookSection[]>(handbookData);
+  const [isLoading, setIsLoading] = useState(true);
+
   // Edit Mode States
   const [isEditUnlocked, setIsEditUnlocked] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState(false);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+  const [adminToken, setAdminToken] = useState<string | null>(null);
   
   // Custom Overrides from localStorage
   const [contentOverrides, setContentOverrides] = useState<{ [key: string]: string }>({});
@@ -30,17 +35,40 @@ export default function Home() {
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const editableRef = useRef<HTMLDivElement>(null);
 
-  // Load custom content overrides from localStorage on component mount
+  // Load sections from API (fallback to handbook.json)
   useEffect(() => {
+    async function loadSections() {
+      try {
+        const res = await fetch('/api/sections');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setSections(data.map((s: any) => ({ id: s.slug, title: s.title, content: s.content })));
+          }
+        }
+      } catch (e) {
+        console.log('API not available, using local data');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadSections();
+  }, []);
+
+  // Load saved token & content overrides from localStorage
+  useEffect(() => {
+    const savedToken = localStorage.getItem('admin_token');
+    if (savedToken) setAdminToken(savedToken);
+
     const overrides: { [key: string]: string } = {};
-    handbookData.forEach((section: HandbookSection) => {
+    (sections.length > 0 ? sections : handbookData).forEach((section: HandbookSection) => {
       const saved = localStorage.getItem(`handbook_panel_${section.id}`);
       if (saved) {
         overrides[section.id] = saved;
       }
     });
     setContentOverrides(overrides);
-  }, []);
+  }, [sections.length > 0]);
 
   // Close search results when clicking outside
   useEffect(() => {
@@ -79,7 +107,8 @@ export default function Home() {
     const lowercaseQuery = q.toLowerCase();
     const results: any[] = [];
 
-    handbookData.forEach((section: HandbookSection) => {
+    const sourceData = sections.length > 0 ? sections : handbookData;
+    sourceData.forEach((section: HandbookSection) => {
       const baseContent = contentOverrides[section.id] || section.content;
       const cleanText = stripHtml(baseContent);
       const index = cleanText.toLowerCase().indexOf(lowercaseQuery);
@@ -114,14 +143,26 @@ export default function Home() {
     setIsSidebarOpen(false);
   };
 
-  // Password Unlock Logic
-  const handlePasswordSubmit = () => {
-    if (passwordInput === '7725') {
-      setIsEditUnlocked(true);
-      setShowPasswordModal(false);
-      setPasswordError(false);
-      setPasswordInput('');
-    } else {
+  // Password Unlock Logic — verify via API
+  const handlePasswordSubmit = async () => {
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: passwordInput }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsEditUnlocked(true);
+        setAdminToken(data.token);
+        localStorage.setItem('admin_token', data.token);
+        setShowPasswordModal(false);
+        setPasswordError(false);
+        setPasswordInput('');
+      } else {
+        setPasswordError(true);
+      }
+    } catch {
       setPasswordError(true);
     }
   };
@@ -131,16 +172,38 @@ export default function Home() {
     setEditingSectionId(sectionId);
   };
 
-  // Save edited section
-  const handleSaveEdit = (sectionId: string) => {
+  // Save edited section — to localStorage AND API
+  const handleSaveEdit = async (sectionId: string) => {
     if (editableRef.current) {
       const updatedHtml = editableRef.current.innerHTML;
+      // Save to localStorage (immediate)
       localStorage.setItem(`handbook_panel_${sectionId}`, updatedHtml);
       setContentOverrides(prev => ({
         ...prev,
         [sectionId]: updatedHtml
       }));
       setEditingSectionId(null);
+
+      // Also save to API if we have a token
+      if (adminToken) {
+        try {
+          const section = sections.find(s => s.id === sectionId) || handbookData.find(s => s.id === sectionId);
+          await fetch('/api/sections', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${adminToken}`,
+            },
+            body: JSON.stringify({
+              slug: sectionId,
+              title: section?.title || sectionId,
+              content: updatedHtml,
+            }),
+          });
+        } catch (e) {
+          console.log('Failed to sync to API, saved locally only');
+        }
+      }
     }
   };
 
@@ -149,8 +212,8 @@ export default function Home() {
     setEditingSectionId(null);
   };
 
-  // Reset section content to default
-  const handleResetToPristine = (sectionId: string) => {
+  // Reset section content to default — local AND API
+  const handleResetToPristine = async (sectionId: string) => {
     if (confirm('Yakin kembalikan bagian ini ke versi asli (sebelum diedit)?')) {
       localStorage.removeItem(`handbook_panel_${sectionId}`);
       setContentOverrides(prev => {
@@ -159,12 +222,36 @@ export default function Home() {
         return copy;
       });
       setEditingSectionId(null);
+
+      // Sync reset to API if we have token & db data
+      if (adminToken) {
+        try {
+          const original = handbookData.find(s => s.id === sectionId);
+          if (original) {
+            await fetch('/api/sections', {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${adminToken}`,
+              },
+              body: JSON.stringify({
+                slug: sectionId,
+                title: original.title,
+                content: original.content,
+              }),
+            });
+          }
+        } catch (e) {
+          console.log('Failed to sync reset to API');
+        }
+      }
     }
   };
 
   // Safe HTML-tag-aware highlighting algorithm (WebKit/Safari/iPad compliant)
   const getHighlightedContent = () => {
-    const activeSection = handbookData.find(s => s.id === activeSectionId);
+    const sourceData = sections.length > 0 ? sections : handbookData;
+    const activeSection = sourceData.find(s => s.id === activeSectionId);
     if (!activeSection) return '';
     
     const baseContent = contentOverrides[activeSectionId] || activeSection.content;
@@ -196,7 +283,7 @@ export default function Home() {
     return str.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
   };
 
-  const activeSection = handbookData.find(s => s.id === activeSectionId) || handbookData[0];
+  const activeSection = (sections.length > 0 ? sections : handbookData).find(s => s.id === activeSectionId) || (sections.length > 0 ? sections : handbookData)[0];
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -780,7 +867,10 @@ export default function Home() {
         </div>
 
         {/* Lock Unlock Editor Toggle */}
-        <div>
+        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+          <a href="/admin" target="_blank" className="hb-btn" style={{ textDecoration: 'none', fontSize: '0.6rem' }} title="Admin Panel">
+            <Edit3 size={12} />
+          </a>
           {isEditUnlocked ? (
             <button 
               className="hb-btn" 
