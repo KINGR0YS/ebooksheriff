@@ -88,7 +88,15 @@ export default function AdminPage() {
   // Check saved token on mount
   useEffect(() => {
     const saved = localStorage.getItem('admin_token');
-    if (saved) setToken(saved);
+    if (saved) {
+      // Verify token is still valid
+      fetch('/api/auth', { headers: { 'Authorization': `Bearer ${saved}` } })
+        .then(res => {
+          if (res.ok) setToken(saved);
+          else localStorage.removeItem('admin_token'); // expired/invalid
+        })
+        .catch(() => localStorage.removeItem('admin_token'));
+    }
   }, []);
 
   // Load sections when authenticated
@@ -106,6 +114,7 @@ export default function AdminPage() {
       const res = await fetch('/api/upload', {
         headers: { 'Authorization': `Bearer ${token}` },
       });
+      if (res.status === 401) return handleAutoLogout();
       if (res.ok) {
         const data = await res.json();
         setImages(data);
@@ -117,8 +126,7 @@ export default function AdminPage() {
     }
   };
 
-  // Logout
-  const handleLogout = () => {
+  const handleAutoLogout = () => {
     setToken(null);
     localStorage.removeItem('admin_token');
     setEditingSection(null);
@@ -149,6 +157,7 @@ export default function AdminPage() {
           content: editContent,
         }),
       });
+      if (res.status === 401) return handleAutoLogout();
       if (res.ok) {
         setSaveSuccess(true);
         setEditingSection(prev => prev ? { ...prev, title: editTitle, content: editContent } : null);
@@ -175,6 +184,7 @@ export default function AdminPage() {
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
       });
+      if (res.status === 401) return handleAutoLogout();
       const data = await res.json();
       if (res.ok) {
         await loadImages();
@@ -356,7 +366,7 @@ export default function AdminPage() {
           <a href="/" target="_blank" style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem', textDecoration: 'none' }}>
             <Eye size={14} /> Lihat Website
           </a>
-          <button onClick={handleLogout} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', color: '#ef4444', padding: '0.35rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.72rem', fontWeight: 600 }}>
+          <button onClick={handleAutoLogout} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', color: '#ef4444', padding: '0.35rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.72rem', fontWeight: 600 }}>
             <LogOut size={13} /> Keluar
           </button>
         </div>

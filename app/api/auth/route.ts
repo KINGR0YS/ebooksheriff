@@ -1,5 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyPassword, signToken } from '@/lib/auth';
+import { verifyPassword, signToken, verifyToken } from '@/lib/auth';
+
+// GET /api/auth — verify token validity
+export async function GET(request: NextRequest) {
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return NextResponse.json({ valid: false }, { status: 401 });
+  }
+  const token = authHeader.split(' ')[1];
+  const { valid } = verifyToken(token);
+  if (!valid) {
+    return NextResponse.json({ valid: false }, { status: 401 });
+  }
+  return NextResponse.json({ valid: true });
+}
 
 // POST /api/auth — login admin
 export async function POST(request: NextRequest) {
