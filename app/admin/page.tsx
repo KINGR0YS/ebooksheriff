@@ -175,10 +175,15 @@ export default function AdminPage() {
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
       });
+      const data = await res.json();
       if (res.ok) {
         await loadImages();
+        alert('✅ Gambar berhasil diupload! Klik gambar untuk copy URL.');
+      } else {
+        alert('❌ Upload gagal: ' + (data.error || 'Unknown error'));
       }
-    } catch (e) {
+    } catch (e: any) {
+      alert('❌ Upload gagal: ' + (e.message || 'Network error'));
       console.error('Upload failed:', e);
     } finally {
       setUploading(false);

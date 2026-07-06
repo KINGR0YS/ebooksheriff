@@ -44,9 +44,12 @@ export async function POST(request: NextRequest) {
       url: result.secure_url,
       public_id: result.public_id,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('POST /api/upload error:', error);
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+    return NextResponse.json({
+      error: error?.message || 'Upload failed',
+      detail: error?.toString() || 'Unknown error',
+    }, { status: 500 });
   }
 }
 
