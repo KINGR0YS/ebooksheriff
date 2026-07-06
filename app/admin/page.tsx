@@ -22,6 +22,7 @@ type ImageItem = {
 export default function AdminPage() {
   // Auth
   const [token, setToken] = useState<string | null>(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -93,9 +94,15 @@ export default function AdminPage() {
       fetch('/api/auth', { headers: { 'Authorization': `Bearer ${saved}` } })
         .then(res => {
           if (res.ok) setToken(saved);
-          else localStorage.removeItem('admin_token'); // expired/invalid
+          else localStorage.removeItem('admin_token');
+          setCheckingAuth(false);
         })
-        .catch(() => localStorage.removeItem('admin_token'));
+        .catch(() => {
+          localStorage.removeItem('admin_token');
+          setCheckingAuth(false);
+        });
+    } else {
+      setCheckingAuth(false);
     }
   }, []);
 
@@ -216,6 +223,15 @@ export default function AdminPage() {
     'referensi': '#8b5cf6',
     'lainnya': '#6b7280',
   };
+
+  // If checking auth, show loading
+  if (checkingAuth) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050608' }}>
+        <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.85rem' }}>Memeriksa sesi...</p>
+      </div>
+    );
+  }
 
   // If not logged in, show login
   if (!token) {
