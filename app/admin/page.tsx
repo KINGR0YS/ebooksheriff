@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Shield, LogIn, LogOut, FileText, Image, Save, ArrowLeft, Trash2, Eye, Upload, ExternalLink } from 'lucide-react';
+import { Shield, LogIn, LogOut, FileText, Image, Save, ArrowLeft, Trash2, Eye, Upload, ExternalLink, Bold, Italic, Underline, Heading1, Heading2, Heading3, List, ListOrdered, Quote, Code, Link, AlignLeft, AlignCenter, AlignRight, Minus, FileCode2 } from 'lucide-react';
 
 type Section = {
   slug: string;
@@ -275,6 +275,59 @@ export default function AdminPage() {
     alert('✅ Gambar disisipkan ke editor! Jangan lupa simpan perubahan.');
   };
 
+  // Rich text formatting
+  const execFormat = (cmd: string, val?: string) => {
+    document.execCommand(cmd, false, val);
+    editorRef.current?.focus();
+    setEditContent(editorRef.current?.innerHTML || '');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      execFormat('insertHTML', '&nbsp;&nbsp;&nbsp;&nbsp;');
+    }
+  };
+
+  const insertHr = () => execFormat('insertHTML', '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:1.5rem 0">');
+  const insertCodeBlock = () => execFormat('insertHTML', '<pre style="background:rgba(0,0,0,0.3);padding:1rem;border-radius:8px;overflow-x:auto;font-family:monospace;font-size:0.82rem;line-height:1.6;color:#e2e8f0"><code>Kode di sini...</code></pre>');
+  const addLink = () => {
+    const url = prompt('Masukkan URL:');
+    if (url) execFormat('createLink', url);
+  };
+
+  // Format buttons config
+  type FmtBtn = { icon: any; cmd: string; val?: string; title: string; label?: string; custom?: () => void };
+  const fmtGroups: FmtBtn[][] = [
+    [
+      { icon: Bold, cmd: 'bold', title: 'Bold' },
+      { icon: Italic, cmd: 'italic', title: 'Italic' },
+      { icon: Underline, cmd: 'underline', title: 'Underline' },
+    ],
+    [
+      { icon: Heading1, cmd: 'formatBlock', val: 'h3', title: 'Heading 1', label: 'H1' },
+      { icon: Heading2, cmd: 'formatBlock', val: 'h4', title: 'Heading 2', label: 'H2' },
+      { icon: Heading3, cmd: 'formatBlock', val: 'h5', title: 'Heading 3', label: 'H3' },
+    ],
+    [
+      { icon: List, cmd: 'insertUnorderedList', title: 'Bullet List' },
+      { icon: ListOrdered, cmd: 'insertOrderedList', title: 'Numbered List' },
+    ],
+    [
+      { icon: Quote, cmd: 'formatBlock', val: 'blockquote', title: 'Quote', label: '"' },
+      { icon: Code, cmd: 'insertHTML', custom: insertCodeBlock, title: 'Code Block' },
+    ],
+    [
+      { icon: AlignLeft, cmd: 'justifyLeft', title: 'Align Left' },
+      { icon: AlignCenter, cmd: 'justifyCenter', title: 'Align Center' },
+      { icon: AlignRight, cmd: 'justifyRight', title: 'Align Right' },
+    ],
+    [
+      { icon: Link, cmd: 'createLink', custom: addLink, title: 'Link' },
+      { icon: Minus, cmd: 'insertHTML', custom: insertHr, title: 'Horizontal line' },
+    ],
+  ];
+
   // Category color mapping
   const categoryColors: Record<string, string> = {
     'informasi-dasar': '#3b82f6',
@@ -374,9 +427,9 @@ export default function AdminPage() {
 
         {/* Editor */}
         <div style={{ maxWidth: '960px', margin: '0 auto', position: 'relative' }}>
-          {/* Image Toolbar */}
+          {/* Image Toolbar (above image) */}
           {imgToolbar && (
-            <div style={{ position: 'absolute', top: imgToolbar.top, left: imgToolbar.left, zIndex: 50, background: '#1a1d29', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '0.35rem 0.5rem', display: 'flex', gap: '0.35rem', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.4)' }}>
+            <div style={{ position: 'absolute', top: imgToolbar.top, left: imgToolbar.left, zIndex: 50, background: '#1a1d29', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', padding: '0.3rem 0.45rem', display: 'flex', gap: '0.25rem', alignItems: 'center', boxShadow: '0 4px 16px rgba(0,0,0,0.5)', pointerEvents: 'auto' }}>
               <button onClick={() => handleImgWidth('100%')} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '4px', color: '#fff', padding: '0.2rem 0.45rem', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 600 }}>100%</button>
               <button onClick={() => handleImgWidth('75%')} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '4px', color: '#fff', padding: '0.2rem 0.45rem', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 600 }}>75%</button>
               <button onClick={() => handleImgWidth('50%')} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '4px', color: '#fff', padding: '0.2rem 0.45rem', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 600 }}>50%</button>
@@ -386,11 +439,38 @@ export default function AdminPage() {
               <button onClick={() => handleImgAlign('right')} style={{ background: imgToolbar.align === 'right' ? 'rgba(212,175,55,0.2)' : 'rgba(255,255,255,0.06)', border: imgToolbar.align === 'right' ? '1px solid rgba(212,175,55,0.3)' : 'none', borderRadius: '4px', color: imgToolbar.align === 'right' ? '#d4af37' : '#fff', padding: '0.2rem 0.45rem', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 600 }}>Kanan</button>
             </div>
           )}
+
+          {/* Formatting Toolbar */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem', padding: '0.4rem 0.6rem', marginBottom: '0.5rem', background: 'rgba(13,16,23,0.8)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', alignItems: 'center', userSelect: 'none' }}>
+            {fmtGroups.map((group, gi) => (
+              <span key={gi} style={{ display: 'flex', gap: '0.15rem', alignItems: 'center' }}>
+                {group.map((btn, bi) => {
+                  const Icon = btn.icon;
+                  return (
+                    <button key={bi} title={btn.title}
+                      onMouseDown={(e) => { e.preventDefault(); if (btn.custom) btn.custom(); else execFormat(btn.cmd, btn.val); }}
+                      style={{ background: 'rgba(255,255,255,0.04)', border: 'none', borderRadius: '6px', color: 'rgba(255,255,255,0.7)', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, transition: 'all 0.15s' }}>
+                      {btn.label ? <span>{btn.label}</span> : <Icon size={15} />}
+                    </button>
+                  );
+                })}
+                {gi < fmtGroups.length - 1 && <span style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.06)', margin: '0 0.15rem' }} />}
+              </span>
+            ))}
+            <span style={{ flex: 1 }} />
+            <button onClick={() => setShowImageManager(true)} title="Sisipkan Gambar"
+              onMouseDown={(e) => e.preventDefault()}
+              style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: '6px', color: '#8b5cf6', padding: '0.2rem 0.6rem', display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 600 }}>
+              <Image size={13} /> Gambar
+            </button>
+          </div>
+
           <div
             ref={editorRef}
             contentEditable
             suppressContentEditableWarning
             onClick={handleEditorClick}
+            onKeyDown={handleKeyDown}
             onBlur={(e) => setEditContent(e.currentTarget.innerHTML)}
             style={{ minHeight: '60vh', padding: '1.25rem', background: 'rgba(13,16,23,0.6)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#c8d0dc', fontSize: '0.88rem', lineHeight: '1.7', outline: 'none', fontFamily: 'Inter, sans-serif', overflow: 'auto' }}
             dangerouslySetInnerHTML={{ __html: editContent }}
@@ -411,6 +491,7 @@ export default function AdminPage() {
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   <input ref={fileInputRef} type="file" accept="image/*" onChange={handleUpload} style={{ display: 'none' }} />
                   <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+                    onMouseDown={(e) => e.preventDefault()}
                     style={{ background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: '8px', color: '#d4af37', padding: '0.5rem 1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', fontWeight: 600 }}>
                     <Upload size={14} /> {uploading ? 'Mengupload...' : 'Upload Gambar'}
                   </button>
