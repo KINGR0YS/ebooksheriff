@@ -42,6 +42,10 @@ export default function AdminPage() {
   const [loadingImages, setLoadingImages] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  // Image toolbar
+  const [imgToolbar, setImgToolbar] = useState<{ top: number; left: number; width: string; align: string } | null>(null);
+  const selectedImgRef = useRef<HTMLImageElement | null>(null);
+
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -194,7 +198,7 @@ export default function AdminPage() {
       const data = await res.json();
       if (res.ok) {
         await loadImages();
-        alert('✅ Gambar berhasil diupload! Klik gambar untuk copy URL.');
+        alert('✅ Gambar berhasil diupload!');
       } else {
         alert('❌ Upload gagal: ' + (data.error || 'Unknown error'));
       }
@@ -204,6 +208,44 @@ export default function AdminPage() {
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // Image toolbar actions
+  const handleImgAlign = (align: string) => {
+    const img = selectedImgRef.current;
+    if (!img) return;
+    const margin = align === 'left' ? '0 1rem 0.5rem 0' : align === 'right' ? '0 0 0.5rem 1rem' : '1rem auto';
+    img.style.cssText += `;display:${align === 'center' ? 'block' : 'inline-block'};float:${align !== 'center' ? align : 'none'};margin:${margin}`;
+    setEditContent(editorRef.current?.innerHTML || '');
+    setImgToolbar(null);
+  };
+  const handleImgWidth = (w: string) => {
+    const img = selectedImgRef.current;
+    if (!img) return;
+    img.style.width = w;
+    setEditContent(editorRef.current?.innerHTML || '');
+  };
+
+  // Detect click on image in editor
+  const handleEditorClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'IMG') {
+      e.preventDefault();
+      selectedImgRef.current = target as HTMLImageElement;
+      const rect = (target as HTMLImageElement).getBoundingClientRect();
+      const editorRect = editorRef.current?.getBoundingClientRect();
+      if (editorRect) {
+        setImgToolbar({
+          top: rect.top - editorRect.top - 45,
+          left: rect.left - editorRect.left,
+          width: (target as HTMLImageElement).style.width || '',
+          align: (target as HTMLImageElement).style.float || 'center',
+        });
+      }
+    } else {
+      setImgToolbar(null);
+      selectedImgRef.current = null;
     }
   };
 
@@ -331,11 +373,24 @@ export default function AdminPage() {
         </div>
 
         {/* Editor */}
-        <div style={{ maxWidth: '960px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '960px', margin: '0 auto', position: 'relative' }}>
+          {/* Image Toolbar */}
+          {imgToolbar && (
+            <div style={{ position: 'absolute', top: imgToolbar.top, left: imgToolbar.left, zIndex: 50, background: '#1a1d29', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '0.35rem 0.5rem', display: 'flex', gap: '0.35rem', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.4)' }}>
+              <button onClick={() => handleImgWidth('100%')} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '4px', color: '#fff', padding: '0.2rem 0.45rem', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 600 }}>100%</button>
+              <button onClick={() => handleImgWidth('75%')} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '4px', color: '#fff', padding: '0.2rem 0.45rem', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 600 }}>75%</button>
+              <button onClick={() => handleImgWidth('50%')} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '4px', color: '#fff', padding: '0.2rem 0.45rem', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 600 }}>50%</button>
+              <span style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.1)', margin: '0 0.15rem' }} />
+              <button onClick={() => handleImgAlign('left')} style={{ background: imgToolbar.align === 'left' ? 'rgba(212,175,55,0.2)' : 'rgba(255,255,255,0.06)', border: imgToolbar.align === 'left' ? '1px solid rgba(212,175,55,0.3)' : 'none', borderRadius: '4px', color: imgToolbar.align === 'left' ? '#d4af37' : '#fff', padding: '0.2rem 0.45rem', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 600 }}>Kiri</button>
+              <button onClick={() => handleImgAlign('center')} style={{ background: imgToolbar.align === 'center' ? 'rgba(212,175,55,0.2)' : 'rgba(255,255,255,0.06)', border: imgToolbar.align === 'center' ? '1px solid rgba(212,175,55,0.3)' : 'none', borderRadius: '4px', color: imgToolbar.align === 'center' ? '#d4af37' : '#fff', padding: '0.2rem 0.45rem', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 600 }}>Tengah</button>
+              <button onClick={() => handleImgAlign('right')} style={{ background: imgToolbar.align === 'right' ? 'rgba(212,175,55,0.2)' : 'rgba(255,255,255,0.06)', border: imgToolbar.align === 'right' ? '1px solid rgba(212,175,55,0.3)' : 'none', borderRadius: '4px', color: imgToolbar.align === 'right' ? '#d4af37' : '#fff', padding: '0.2rem 0.45rem', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 600 }}>Kanan</button>
+            </div>
+          )}
           <div
             ref={editorRef}
             contentEditable
             suppressContentEditableWarning
+            onClick={handleEditorClick}
             onBlur={(e) => setEditContent(e.currentTarget.innerHTML)}
             style={{ minHeight: '60vh', padding: '1.25rem', background: 'rgba(13,16,23,0.6)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#c8d0dc', fontSize: '0.88rem', lineHeight: '1.7', outline: 'none', fontFamily: 'Inter, sans-serif', overflow: 'auto' }}
             dangerouslySetInnerHTML={{ __html: editContent }}
